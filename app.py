@@ -66,31 +66,6 @@ try:
             return resp
         except Exception as e:
             return flask.jsonify({"lỗi": str(e)}), 500  # Trả về lỗi nếu có
-    # @app.route('/api/sanpham/getanh/<masp>', methods=['GET'])
-    # def get_image_by_masp(masp):
-    #     try:
-    #         cursor = conn.cursor()
-    #         sql = "EXEC GetAnhSanPhamByMaSP @MaSP = ?"
-    #         cursor.execute(sql, (masp,))
-
-    #         result = []
-    #         keys = [column[0] for column in cursor.description]  # Lấy các key từ mô tả
-    #         for row in cursor.fetchall():  # Lấy kết quả
-    #         # Mã hóa ảnh thành base64
-    #             image_data = row[2]  # Giả sử TenFileAnh là cột thứ 3 trong kết quả
-    #             image_base64 = base64.b64encode(image_data).decode('utf-8')
-    #             result.append({
-    #                 'MaSP': row[0],
-    #                 'TenSP': row[1],
-    #                 'TenFileAnh': image_base64,
-    #                 'IdAnh': row[3]
-    #             })
-
-    #         resp = flask.jsonify(result)
-    #         resp.status_code = 200
-    #         return resp
-    #     except Exception as e:
-    #         return flask.jsonify({"lỗi": str(e)}), 500  # Trả về lỗi nếu có
     
     @app.route('/api/sanpham/add', methods=['POST'])
     def insertSanPham():
@@ -933,7 +908,7 @@ try:
             if 'cursor' in locals():
                 cursor.close()
             if 'conn' in locals():
-                conn.close()    
+                conn.close()
                 
     @app.route('/api/get-doanh-thu-theo-nam', methods=['POST'])
     def get_doanh_thu_theo_nam():
