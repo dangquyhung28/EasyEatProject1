@@ -188,7 +188,7 @@ try:
             if 'conn' in locals():
                 conn.close()
 
-
+    
     @app.route('/api/sanpham/delete/<MaSP>', methods=['DELETE'])
     def deleteSanPham(MaSP):
         cursor = None
@@ -704,7 +704,145 @@ try:
                 cursor.close()
             if 'conn' in locals():
                 conn.close()
+    #LAY GIO HANG
+    @app.route('/api/giohang', methods=['GET'])
+    def get_gio_hang_by_ma_khach_hang():
+        try:
+            # Lấy tham số MaKH từ query string
+            MaKH = flask.request.args.get('MaKH')
 
+            if not MaKH:
+                return flask.jsonify({"lỗi": "Thiếu tham số MaKH"}), 400
+
+            # Thực thi Stored Procedure trong SQL Server
+            cursor = conn.cursor()
+            # Gọi stored procedure LaySanPhamGioHangTheoMaKH với tham số MaKH
+            cursor.execute("{CALL LaySanPhamGioHangTheoMaKH (?)}", MaKH)
+
+            # Lấy kết quả
+            rows = cursor.fetchall()
+
+            # Kiểm tra nếu không có sản phẩm trong giỏ hàng
+            if not rows:
+                return flask.jsonify({"lỗi": "Không tìm thấy sản phẩm trong giỏ hàng"}), 404
+
+            # Chuyển đổi dữ liệu thành JSON
+            cart_items = []
+            for row in rows:
+                item = {
+                    "MaDonHang": row.MaDonHang,
+                    "MaKhachHang": row.MaKhachHang,
+                    "TenKhachHang": row.TenKhachHang,
+                    "MaSanPham": row.MaSanPham,
+                    "TenSanPham": row.TenSanPham,
+                    "MoTaSanPham": row.MoTaSanPham,
+                    "GiaBan": row.GiaBan,
+                    "SoLuong": row.SoLuong,
+                    "AnhSanPham": row.AnhSanPham,
+                    "GiamGia": row.GiamGia,
+                    "ThanhTien": row.ThanhTien,
+                    "NgayTaoGioHang": row.NgayTaoGioHang
+                }
+                cart_items.append(item)
+
+            return flask.jsonify(cart_items), 200
+
+        except Exception as e:
+            return flask.jsonify({"lỗi": str(e)}), 500
+
+        finally:
+            cursor.close() # Đảm bảo cursor được đóng
+    @app.route('/api/giohang/add', methods=['POST'])
+    def them_san_pham_vao_gio_hang():
+        try:
+            # Lấy dữ liệu từ request
+            data = flask.request.get_json()
+            MaKH = data.get('MaKH')
+            MaSP = data.get('MaSP')
+            SoLuong = data.get('SoLuong')
+
+            # Kiểm tra tham số đầu vào
+            if not MaKH or not MaSP or SoLuong is None:
+                return flask.jsonify({"error": "Thiếu tham số MaKH, MaSP hoặc SoLuong"}), 400
+
+            # Thực thi stored procedure
+            cursor = conn.cursor()
+            cursor.execute("{CALL ThemSanPhamVaoGioHang (?, ?, ?)}", (MaKH, MaSP, SoLuong))
+            conn.commit()
+
+            # Trả về phản hồi thành công
+            return flask.jsonify({"message": "Sản phẩm đã được thêm vào giỏ hàng thành công"}), 200
+
+        except Exception as e:
+            # Xử lý lỗi
+            return flask.jsonify({"error": str(e)}), 500
+
+        finally:
+            cursor.close()
+            
+    #XOA SP khoi gio hang
+    @app.route('/giohang/delete/<MaKH>/<MaSP>', methods=['DELETE'])
+    def deleteSP(MaKH, MaSP):
+        cursor = None
+        try:
+            # Kiểm tra xem MaKH và MaSP có bị thiếu hay không
+            if not MaKH or not MaSP:
+                return flask.jsonify({"lỗi": "Thiếu mã khách hàng hoặc mã sản phẩm"}), 400
+
+            # Kết nối cơ sở dữ liệu và gọi procedure XoaSanPhamKhoiGioHang
+            cursor = conn.cursor()
+
+            # Thực thi stored procedure XoaSanPhamKhoiGioHang với MaKH và MaSP
+            sql = "{CALL XoaSanPhamKhoiGioHang(?, ?)}"
+            cursor.execute(sql, (MaKH, MaSP))
+
+            # Commit nếu không có lỗi
+            conn.commit()
+
+            # Kiểm tra xem sản phẩm đã được xóa hay không
+            if cursor.rowcount == 0:  # Nếu không có thay đổi, tức là không tìm thấy sản phẩm trong giỏ hàng
+                return flask.jsonify({"thông báo": "Sản phẩm không có trong giỏ hàng"}), 404
+            else:
+                return flask.jsonify({"thông báo": "Xóa sản phẩm khỏi giỏ hàng thành công"}), 200
+
+        except Exception as e:
+            conn.rollback()  # Rollback giao dịch nếu có lỗi
+            print(f"Lỗi: {e}")  # Debug lỗi chi tiết trong console
+            return flask.jsonify({"lỗi": f"Lỗi khi xóa sản phẩm: {str(e)}"}), 500
+
+        finally:
+            if cursor:
+                cursor.close() 
+    #CAP NHAT
+    @app.route('/api/giohang/update', methods=['PUT'])
+    def cap_nhat_so_luong_san_pham():
+        try:
+            # Lấy dữ liệu từ request
+            data = flask.request.get_json()
+            MaKH = data.get('MaKH')
+            MaSP = data.get('MaSP')
+            SoLuong = data.get('SoLuong')
+
+            # Kiểm tra tham số đầu vào
+            if not MaKH or not MaSP or SoLuong is None:
+                return flask.jsonify({"error": "Thiếu tham số MaKH, MaSP hoặc SoLuong"}), 400
+
+            # Thực thi stored procedure
+            cursor = conn.cursor()
+            cursor.execute("{CALL CapNhatSoLuongSanPhamTrongGioHang (?, ?, ?)}", (MaKH, MaSP, SoLuong))
+            conn.commit()
+
+            # Trả về phản hồi thành công
+            return flask.jsonify({"message": "Số lượng sản phẩm đã được cập nhật thành công"}), 200
+
+        except Exception as e:
+            # Xử lý lỗi
+            return flask.jsonify({"error": str(e)}), 500
+
+        finally:
+            cursor.close()
+
+    #LAY DON HANG
     @app.route('/api/get-doanh-thu-theo-ngay', methods=['POST'])
     def get_doanh_thu_theo_ngay():
         try:
@@ -748,7 +886,7 @@ try:
             if 'cursor' in locals():
                 cursor.close()
             if 'conn' in locals():
-                conn.close()       
+                conn.close()
                 
     @app.route('/api/get-doanh-thu-theo-thang', methods=['POST'])
     def get_doanh_thu_theo_thang():
